@@ -15,17 +15,6 @@ provider "oci" {
   region           = var.region
 }
 
-variable "tenancy_ocid" {}
-variable "user_ocid" {}
-variable "fingerprint" {}
-variable "private_key_path" {}
-variable "region" {}
-variable "compartment_ocid" {}
-variable "ssh_public_key_path" {}
-variable "availability_domain_index" {
-  default = 0
-}
-
 data "oci_identity_availability_domains" "ads" {
   compartment_id = var.tenancy_ocid
 }
