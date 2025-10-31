@@ -122,8 +122,10 @@ resource "oci_core_instance" "ubuntu_vm" {
   display_name = "ubuntu-free-tier-arm"
 
   source_details {
-    source_type = "image"
-    source_id   = data.oci_core_images.ubuntu_arm.images[0].id
+    source_type               = "image"
+    source_id                 = data.oci_core_images.ubuntu_arm.images[0].id
+    boot_volume_size_in_gbs   = 190
+    boot_volume_vpus_per_gb   = 10
   }
 
   create_vnic_details {
