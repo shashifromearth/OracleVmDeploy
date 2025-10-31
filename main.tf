@@ -8,11 +8,11 @@ terraform {
 }
 
 provider "oci" {
-  tenancy_ocid        = var.tenancy_ocid
-  user_ocid           = var.user_ocid
-  fingerprint         = var.fingerprint
-  private_key_path    = var.private_key_path
-  region              = var.region
+  tenancy_ocid     = var.tenancy_ocid
+  user_ocid        = var.user_ocid
+  fingerprint      = var.fingerprint
+  private_key_path = var.private_key_path
+  region           = var.region
 }
 
 variable "tenancy_ocid" {}
@@ -22,15 +22,18 @@ variable "private_key_path" {}
 variable "region" {}
 variable "compartment_ocid" {}
 variable "ssh_public_key_path" {}
+variable "availability_domain_index" {
+  default = 0
+}
 
 data "oci_identity_availability_domains" "ads" {
   compartment_id = var.tenancy_ocid
 }
 
-data "oci_core_images" "ubuntu" {
+data "oci_core_images" "ubuntu_arm" {
   compartment_id           = var.compartment_ocid
   operating_system         = "Canonical Ubuntu"
-  operating_system_version = "22.04"
+  operating_system_version = "24.04"
   shape                    = "VM.Standard.A1.Flex"
   sort_by                  = "TIMECREATED"
   sort_order               = "DESC"
@@ -58,15 +61,6 @@ resource "oci_core_route_table" "rt" {
     destination_type  = "CIDR_BLOCK"
     network_entity_id = oci_core_internet_gateway.igw.id
   }
-}
-
-resource "oci_core_subnet" "subnet" {
-  compartment_id      = var.compartment_ocid
-  vcn_id              = oci_core_virtual_network.vcn.id
-  cidr_block          = "10.0.1.0/24"
-  display_name        = "free-tier-subnet"
-  route_table_id      = oci_core_route_table.rt.id
-  prohibit_public_ip_on_vnic = false
 }
 
 resource "oci_core_security_list" "sec_list" {
@@ -116,8 +110,18 @@ resource "oci_core_security_list" "sec_list" {
   }
 }
 
+resource "oci_core_subnet" "subnet" {
+  compartment_id      = var.compartment_ocid
+  vcn_id              = oci_core_virtual_network.vcn.id
+  cidr_block          = "10.0.1.0/24"
+  display_name        = "free-tier-subnet"
+  route_table_id      = oci_core_route_table.rt.id
+  security_list_ids   = [oci_core_security_list.sec_list.id]
+  prohibit_public_ip_on_vnic = false
+}
+
 resource "oci_core_instance" "ubuntu_vm" {
-  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
+  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[var.availability_domain_index].name
   compartment_id      = var.compartment_ocid
   shape               = "VM.Standard.A1.Flex"
 
@@ -126,10 +130,11 @@ resource "oci_core_instance" "ubuntu_vm" {
     memory_in_gbs = 24
   }
 
-  display_name = "ubuntu-free-tier"
+  display_name = "ubuntu-free-tier-arm"
+
   source_details {
     source_type = "image"
-    source_id   = data.oci_core_images.ubuntu.images[0].id
+    source_id   = data.oci_core_images.ubuntu_arm.images[0].id
   }
 
   create_vnic_details {
@@ -140,4 +145,12 @@ resource "oci_core_instance" "ubuntu_vm" {
   metadata = {
     ssh_authorized_keys = file(var.ssh_public_key_path)
   }
+}
+
+output "public_ip" {
+  value = oci_core_instance.ubuntu_vm.public_ip
+}
+
+output "ssh_command" {
+  value = "ssh -i <your-private-key> ubuntu@${oci_core_instance.ubuntu_vm.public_ip}"
 }
