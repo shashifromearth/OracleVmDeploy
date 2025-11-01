@@ -114,9 +114,9 @@ locals {
 }
 
 resource "oci_core_instance" "ubuntu_vm" {
-  count = length(local.ad_names)
+  for_each = { for i, ad in local.ad_names : i => ad }
 
-  availability_domain = local.ad_names[count.index]
+  availability_domain = each.value
   compartment_id      = var.compartment_ocid
 
   shape = var.fallback_to_e2 ? "VM.Standard.E2.1.Micro" : "VM.Standard.A1.Flex"
@@ -129,7 +129,7 @@ resource "oci_core_instance" "ubuntu_vm" {
     }
   }
 
-  display_name = "ubuntu-free-tier-arm-${count.index}"
+  display_name = "ubuntu-free-tier-arm-${each.key}"
 
   source_details {
     source_type             = "image"
@@ -145,11 +145,6 @@ resource "oci_core_instance" "ubuntu_vm" {
 
   metadata = {
     ssh_authorized_keys = file(var.ssh_public_key_path)
-  }
-
-  lifecycle {
-    create_before_destroy = true
-    ignore_errors         = true
   }
 
   timeouts {
