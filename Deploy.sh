@@ -4,6 +4,6 @@ while true; do
 terraform init
 terraform apply -auto-approve
 echo "Retrying in 1 hour due to capacity error..."
-  sleep 3600
+  sleep 360
 done
 echo "✅ Deployment complete. Check your public IP above to connect via SSH or RDP."
