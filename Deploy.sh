@@ -2,7 +2,7 @@
 
 echo "🔧 Setting up one-click Ubuntu VM on Oracle Cloud Free Tier..."
 
-timeinSec=3400  # 1 hour in seconds
+timeinSec=7200  # 1 hour in seconds
 
 while true; do
   last_run=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %H:%M:%S")
