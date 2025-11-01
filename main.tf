@@ -111,31 +111,27 @@ resource "oci_core_subnet" "subnet" {
 
 locals {
   ad_names = [for ad in data.oci_identity_availability_domains.ads.availability_domains : ad.name]
+  selected_ad = local.ad_names[var.availability_domain_index]
+  selected_shape = var.fallback_to_e2 ? "VM.Standard.E2.1.Micro" : "VM.Standard.A1.Flex"
 }
 
 resource "oci_core_instance" "ubuntu_vm" {
-  for_each = { for i, ad in local.ad_names : i => ad }
-
-  availability_domain = each.value
+  availability_domain = local.selected_ad
   compartment_id      = var.compartment_ocid
-
-  shape = var.fallback_to_e2 ? "VM.Standard.E2.1.Micro" : "VM.Standard.A1.Flex"
+  shape               = local.selected_shape
 
   dynamic "shape_config" {
-    for_each = var.fallback_to_e2 ? [] : [1]
+    for_each = local.selected_shape == "VM.Standard.A1.Flex" ? [1] : []
     content {
       ocpus         = 4
       memory_in_gbs = 24
     }
   }
 
-  display_name = "ubuntu-free-tier-arm-${each.key}"
-
   source_details {
     source_type             = "image"
     source_id               = data.oci_core_images.ubuntu_arm.images[0].id
     boot_volume_size_in_gbs = 190
-    boot_volume_vpus_per_gb = 10
   }
 
   create_vnic_details {
@@ -146,6 +142,8 @@ resource "oci_core_instance" "ubuntu_vm" {
   metadata = {
     ssh_authorized_keys = file(var.ssh_public_key_path)
   }
+
+  display_name = "ubuntu-free-tier-vm"
 
   timeouts {
     create = "30m"
