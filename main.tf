@@ -70,6 +70,15 @@ resource "oci_core_security_list" "sec_list" {
     protocol = "6"
     source   = "0.0.0.0/0"
     tcp_options {
+      min = 3389
+      max = 3389
+    }
+  }
+
+  ingress_security_rules {
+    protocol = "6"
+    source   = "0.0.0.0/0"
+    tcp_options {
       min = 80
       max = 80
     }
@@ -84,15 +93,6 @@ resource "oci_core_security_list" "sec_list" {
     }
   }
 
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 3389
-      max = 3389
-    }
-  }
-
   egress_security_rules {
     protocol    = "all"
     destination = "0.0.0.0/0"
@@ -100,38 +100,36 @@ resource "oci_core_security_list" "sec_list" {
 }
 
 resource "oci_core_subnet" "subnet" {
-  compartment_id      = var.compartment_ocid
-  vcn_id              = oci_core_virtual_network.vcn.id
-  cidr_block          = "10.0.1.0/24"
-  display_name        = "free-tier-subnet"
-  route_table_id      = oci_core_route_table.rt.id
-  security_list_ids   = [oci_core_security_list.sec_list.id]
+  compartment_id            = var.compartment_ocid
+  vcn_id                    = oci_core_virtual_network.vcn.id
+  cidr_block                = "10.0.1.0/24"
+  display_name              = "free-tier-subnet"
+  route_table_id            = oci_core_route_table.rt.id
+  security_list_ids         = [oci_core_security_list.sec_list.id]
   prohibit_public_ip_on_vnic = false
 }
 
 locals {
   ad_names = [for ad in data.oci_identity_availability_domains.ads.availability_domains : ad.name]
-  selected_ad = local.ad_names[var.availability_domain_index]
-  selected_shape = var.fallback_to_e2 ? "VM.Standard.E2.1.Micro" : "VM.Standard.A1.Flex"
 }
 
 resource "oci_core_instance" "ubuntu_vm" {
-  availability_domain = local.selected_ad
+  count              = length(local.ad_names)
+  availability_domain = local.ad_names[count.index]
   compartment_id      = var.compartment_ocid
-  shape               = local.selected_shape
+  shape               = "VM.Standard.A1.Flex"
 
-  dynamic "shape_config" {
-    for_each = local.selected_shape == "VM.Standard.A1.Flex" ? [1] : []
-    content {
-      ocpus         = 4
-      memory_in_gbs = 24
-    }
+  shape_config {
+    ocpus         = var.ocpus
+    memory_in_gbs = var.memory_in_gbs
   }
+
+  display_name = "ubuntu-free-tier-arm-${count.index}"
 
   source_details {
     source_type             = "image"
     source_id               = data.oci_core_images.ubuntu_arm.images[0].id
-    boot_volume_size_in_gbs = 190
+    boot_volume_size_in_gbs = var.boot_volume_size_in_gbs
   }
 
   create_vnic_details {
@@ -142,36 +140,16 @@ resource "oci_core_instance" "ubuntu_vm" {
   metadata = {
     ssh_authorized_keys = file(var.ssh_public_key_path)
   }
-
-  display_name = "ubuntu-free-tier-vm"
 
   timeouts {
     create = "30m"
   }
 }
-  display_name = "ubuntu-free-tier-arm"
 
-  source_details {
-    source_type               = "image"
-    source_id                 = data.oci_core_images.ubuntu_arm.images[0].id
-    boot_volume_size_in_gbs   = 190
-    boot_volume_vpus_per_gb   = 10
-  }
-
-  create_vnic_details {
-    subnet_id        = oci_core_subnet.subnet.id
-    assign_public_ip = true
-  }
-
-  metadata = {
-    ssh_authorized_keys = file(var.ssh_public_key_path)
-  }
+output "public_ips" {
+  value = [for vm in oci_core_instance.ubuntu_vm : vm.public_ip]
 }
 
-output "public_ip" {
-  value = oci_core_instance.ubuntu_vm.public_ip
-}
-
-output "ssh_command" {
-  value = "ssh -i <your-private-key> ubuntu@${oci_core_instance.ubuntu_vm.public_ip}"
+output "ssh_commands" {
+  value = [for vm in oci_core_instance.ubuntu_vm : "ssh -i ${var.ssh_private_key_path} ubuntu@${vm.public_ip}"]
 }
