@@ -6,5 +6,6 @@ region              = "ap-mumbai-1"
 compartment_ocid    = "ocid1.tenancy.oc1..aaaaaaaaahzv2wantgv2b2xsvjfha552nk3tmwtwdb2qwlz3sg7fo22tyysa"
 ssh_public_key_path = "/home/shashilpu/.ssh/id_rsa.pub"
 availability_domain_index = 0
+fallback_to_e2 = true
 
 

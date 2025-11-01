@@ -38,3 +38,8 @@ variable "availability_domain_index" {
   type        = number
   default     = 0
 }
+variable "fallback_to_e2" {
+  description = "Set to true to fallback to VM.Standard.E2.1.Micro if A1.Flex fails"
+  type        = bool
+  default     = false
+}

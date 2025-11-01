@@ -109,16 +109,53 @@ resource "oci_core_subnet" "subnet" {
   prohibit_public_ip_on_vnic = false
 }
 
-resource "oci_core_instance" "ubuntu_vm" {
-  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[var.availability_domain_index].name
-  compartment_id      = var.compartment_ocid
-  shape               = "VM.Standard.A1.Flex"
+locals {
+  ad_names = [for ad in data.oci_identity_availability_domains.ads.availability_domains : ad.name]
+}
 
-  shape_config {
-    ocpus         = 4
-    memory_in_gbs = 24
+resource "oci_core_instance" "ubuntu_vm" {
+  count = length(local.ad_names)
+
+  availability_domain = local.ad_names[count.index]
+  compartment_id      = var.compartment_ocid
+
+  shape = var.fallback_to_e2 ? "VM.Standard.E2.1.Micro" : "VM.Standard.A1.Flex"
+
+  dynamic "shape_config" {
+    for_each = var.fallback_to_e2 ? [] : [1]
+    content {
+      ocpus         = 4
+      memory_in_gbs = 24
+    }
   }
 
+  display_name = "ubuntu-free-tier-arm-${count.index}"
+
+  source_details {
+    source_type             = "image"
+    source_id               = data.oci_core_images.ubuntu_arm.images[0].id
+    boot_volume_size_in_gbs = 190
+    boot_volume_vpus_per_gb = 10
+  }
+
+  create_vnic_details {
+    subnet_id        = oci_core_subnet.subnet.id
+    assign_public_ip = true
+  }
+
+  metadata = {
+    ssh_authorized_keys = file(var.ssh_public_key_path)
+  }
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_errors         = true
+  }
+
+  timeouts {
+    create = "30m"
+  }
+}
   display_name = "ubuntu-free-tier-arm"
 
   source_details {
