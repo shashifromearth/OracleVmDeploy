@@ -5,6 +5,7 @@ private_key_path    = "/home/shashilpu/oci_key/oci_api_key.pem"
 region              = "ap-mumbai-1"
 compartment_ocid    = "ocid1.tenancy.oc1..aaaaaaaaahzv2wantgv2b2xsvjfha552nk3tmwtwdb2qwlz3sg7fo22tyysa"
 ssh_public_key_path = "/home/shashilpu/.ssh/id_rsa.pub"
+ssh_private_key_path = "/home/shashilpu/.ssh/id_rsa"
 ocpus                  = 4
 memory_in_gbs          = 24
 boot_volume_size_in_gbs = 190
