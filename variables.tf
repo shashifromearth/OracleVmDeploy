@@ -55,7 +55,3 @@ variable "boot_volume_size_in_gbs" {
   default     = 50
   description = "Boot volume size in GBs"
 }
-variable "ssh_private_key_path" {
-  description = "Path to your SSH private key"
-  type        = string
-}
