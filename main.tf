@@ -19,10 +19,10 @@ data "oci_identity_availability_domains" "ads" {
   compartment_id = var.tenancy_ocid
 }
 
-data "oci_core_images" "ubuntu_arm" {
+data "oci_core_images" "oracle_linux_arm" {
   compartment_id           = var.compartment_ocid
-  operating_system         = "Canonical Ubuntu"
-  operating_system_version = "24.04"
+  operating_system         = "Oracle Linux"
+  operating_system_version = "9"
   shape                    = "VM.Standard.A1.Flex"
   sort_by                  = "TIMECREATED"
   sort_order               = "DESC"
@@ -124,11 +124,11 @@ resource "oci_core_instance" "ubuntu_vm" {
     memory_in_gbs = var.memory_in_gbs
   }
 
-  display_name = "ubuntu-free-tier-arm"
+  display_name = "oracle-linux-arm"
 
   source_details {
     source_type             = "image"
-    source_id               = data.oci_core_images.ubuntu_arm.images[0].id
+    source_id               = data.oci_core_images.oracle_linux_arm.images[0].id
     boot_volume_size_in_gbs = var.boot_volume_size_in_gbs
   }
 
@@ -144,6 +144,23 @@ resource "oci_core_instance" "ubuntu_vm" {
   timeouts {
     create = "30m"
   }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      echo "$(date +"%Y-%m-%d %H:%M:%S") | AD: ${local.selected_ad} | IP: ${self.public_ip}" >> deployment_log.txt
+    EOT
+  }
+}
+
+resource "null_resource" "auto_destroy_if_failed" {
+  triggers = {
+    instance_id = oci_core_instance.ubuntu_vm.id
+  }
+
+  provisioner "local-exec" {
+    when    = "destroy"
+    command = "echo '⚠️ Destroying failed or timed-out instance: ${self.triggers.instance_id}' >> deployment_log.txt"
+  }
 }
 
 output "public_ip" {
@@ -151,5 +168,5 @@ output "public_ip" {
 }
 
 output "ssh_command" {
-  value = "ssh -i ${var.ssh_private_key_path} ubuntu@${oci_core_instance.ubuntu_vm.public_ip}"
+  value = "ssh -i ${var.ssh_private_key_path} oracle@${oci_core_instance.ubuntu_vm.public_ip}"
 }
