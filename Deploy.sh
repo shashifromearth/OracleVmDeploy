@@ -1,22 +1,23 @@
 #!/bin/bash
 
-echo "🔧 Setting up one-click Ubuntu VM on Oracle Cloud Free Tier..."
+echo "🔧 Starting Oracle Cloud VM deployment with AD rotation..."
+timeinSec=360 # Retry every 1 hour
+max_ad=3        # Number of ADs to try (usually 3 per region)
 
-timeinSec=720  # 1 hour in seconds
+for (( i=0; i<$max_ad; i++ )); do
+  timestamp=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %H:%M:%S")
+  echo "🕒 Attempting deployment in AD index $i at $timestamp IST"
 
-while true; do
-  last_run=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %H:%M:%S")
-  echo "🕒 Last attempt started at: $last_run IST"
-
-  terraform init
-  terraform apply -auto-approve
+  terraform apply -var="ad_index=$i" -auto-approve
 
   if [ $? -eq 0 ]; then
     success_time=$(TZ='Asia/Kolkata' date +"%Y-%m-%d %H:%M:%S")
-    echo "✅ Deployment complete at $success_time IST. Check your public IP above to connect via SSH or RDP."
+    echo "✅ VM deployed successfully in AD-$((i+1)) at $success_time IST"
+    terraform output ssh_command
+    terraform output public_ip
     break
   fi
 
-  echo "⚠️ Capacity error. Retrying in $timeinSec seconds...🕒 Last attempt started at: $last_run IST"
+  echo "⚠️ AD-$((i+1)) failed. Retrying in $timeinSec seconds (~1 hour)..."
   sleep $timeinSec
 done

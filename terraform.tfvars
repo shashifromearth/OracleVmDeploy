@@ -9,6 +9,8 @@ ssh_private_key_path = "/home/shashilpu/.ssh/id_rsa"
 ocpus                  = 4
 memory_in_gbs          = 24
 boot_volume_size_in_gbs = 190
+ad_index                = 0
+
 
 
 

@@ -100,22 +100,22 @@ resource "oci_core_security_list" "sec_list" {
 }
 
 resource "oci_core_subnet" "subnet" {
-  compartment_id            = var.compartment_ocid
-  vcn_id                    = oci_core_virtual_network.vcn.id
-  cidr_block                = "10.0.1.0/24"
-  display_name              = "free-tier-subnet"
-  route_table_id            = oci_core_route_table.rt.id
-  security_list_ids         = [oci_core_security_list.sec_list.id]
+  compartment_id             = var.compartment_ocid
+  vcn_id                     = oci_core_virtual_network.vcn.id
+  cidr_block                 = "10.0.1.0/24"
+  display_name               = "free-tier-subnet"
+  route_table_id             = oci_core_route_table.rt.id
+  security_list_ids          = [oci_core_security_list.sec_list.id]
   prohibit_public_ip_on_vnic = false
 }
 
 locals {
-  ad_names = [for ad in data.oci_identity_availability_domains.ads.availability_domains : ad.name]
+  ad_names    = [for ad in data.oci_identity_availability_domains.ads.availability_domains : ad.name]
+  selected_ad = local.ad_names[var.ad_index]
 }
 
 resource "oci_core_instance" "ubuntu_vm" {
-  count              = length(local.ad_names)
-  availability_domain = local.ad_names[count.index]
+  availability_domain = local.selected_ad
   compartment_id      = var.compartment_ocid
   shape               = "VM.Standard.A1.Flex"
 
@@ -124,7 +124,7 @@ resource "oci_core_instance" "ubuntu_vm" {
     memory_in_gbs = var.memory_in_gbs
   }
 
-  display_name = "ubuntu-free-tier-arm-${count.index}"
+  display_name = "ubuntu-free-tier-arm"
 
   source_details {
     source_type             = "image"
@@ -146,10 +146,10 @@ resource "oci_core_instance" "ubuntu_vm" {
   }
 }
 
-output "public_ips" {
-  value = [for vm in oci_core_instance.ubuntu_vm : vm.public_ip]
+output "public_ip" {
+  value = oci_core_instance.ubuntu_vm.public_ip
 }
 
-output "ssh_commands" {
-  value = [for vm in oci_core_instance.ubuntu_vm : "ssh -i ${var.ssh_private_key_path} ubuntu@${vm.public_ip}"]
+output "ssh_command" {
+  value = "ssh -i ${var.ssh_private_key_path} ubuntu@${oci_core_instance.ubuntu_vm.public_ip}"
 }

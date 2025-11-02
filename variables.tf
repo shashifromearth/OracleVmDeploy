@@ -55,3 +55,8 @@ variable "boot_volume_size_in_gbs" {
   default     = 50
   description = "Boot volume size in GBs"
 }
+variable "ad_index" {
+  type        = number
+  default     = 0
+  description = "Index of availability domain to deploy in"
+}
