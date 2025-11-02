@@ -158,7 +158,7 @@ resource "null_resource" "auto_destroy_if_failed" {
   }
 
   provisioner "local-exec" {
-    when    = "destroy"
+    when    = destroy
     command = "echo '⚠️ Destroying failed or timed-out instance: ${self.triggers.instance_id}' >> deployment_log.txt"
   }
 }
