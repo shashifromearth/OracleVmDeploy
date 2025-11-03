@@ -1,0 +1,44 @@
+name: Oracle VM Deploy Every 3 Hours
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # Every 3 hours
+  workflow_dispatch:       # Manual trigger option
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up OCI CLI
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+          echo "${{ secrets.OCI_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          curl -sSL https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh | bash -s -- -i ~/bin -b ~/bin
+          echo "export PATH=$PATH:~/bin" >> $GITHUB_ENV
+
+      - name: Run Deploy.sh with Retry
+        run: |
+          chmod +x Deploy.sh
+          max_attempts=5
+          attempt=1
+          until ./Deploy.sh; do
+            echo "Attempt $attempt failed at $(date)"
+            ((attempt++))
+            if [ $attempt -gt $max_attempts ]; then
+              echo "All attempts failed. Exiting."
+              exit 1
+            fi
+            sleep 1800  # Wait 30 minutes before retry
+          done
+          echo "✅ Oracle VM deployed successfully at $(date)"
+
+      - name: Notify via GitHub Email
+        if: success()
+        run: |
+          echo "✅ Oracle VM deployed successfully in ap-mumbai-1 at $(date)" | mail -s "Oracle VM Deployment Success" ${{ github.actor }}@users.noreply.github.com
